@@ -18,7 +18,7 @@
 
 1.  **Клонируйте репозиторий:**
     ```bash
-    git clone [https://github.com/renkagod/Alias.git](https://github.com/renkagod/Alias.git)
+    git clone https://github.com/renkagod/Alias.git
     cd Alias
     ```
 
@@ -65,8 +65,8 @@ A simple and convenient bot for playing "Alias" with friends directly in Telegra
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/renkagod/Alias.git](https://github.com/renkagod/Alias.git)
-    cd Alias
+    git clone https://github.com/renkagod/Alias.git
+	cd Alias
     ```
 
 2.  **Install dependencies:**
