@@ -21,29 +21,23 @@ if not BOT_TOKEN:
 DICT_PATH = "dictionaries/"
 USER_DATA_FILE = "user_data.json"
 
-# --- TEXTS FOR LOCALIZATION ---
+# --- TEXTS FOR LOCALIZATION (Убраны ключи для кнопки "Несколько слов") ---
 TEXTS = {
     'en': {
         'welcome_new': "👋 Hi, {user}!\n\nLooks like you're new here. Please choose your language:",
-        'welcome_existing': "Your active dictionary: <b>{dict}</b>\n\nChoose an action:",
+        'welcome_existing': "Your active dictionary: <b>{dict}</b>\n\nPress the button to get a word.",
         'choose_dict_prompt': "Great! Now choose a default dictionary:",
         'available_dicts': "Available dictionaries:",
         'dict_changed': "✅ Default dictionary changed to: <b>{dict}</b>.",
         'lets_start': "Let's begin! Use the buttons on the keyboard.",
-        'choose_word_count': "Choose how many words you want to get:",
         'no_dict_selected': "Please select a dictionary first! Go to Settings -> Change Dictionary.",
         'no_words_in_dict': "There are no words in this dictionary!",
         'random_word_title': "🎲 Word:",
-        'multiple_words_title': "Words:",
-        'file_ready': "✅ Your file with words is ready:",
-        'whats_next': "What's next?",
         'btn_random_word': "🎲 Random Word",
-        'btn_get_multiple': "🔢 Get Multiple",
         'btn_settings': "⚙️ Settings",
         'btn_change_dict': "📚 Change Dictionary",
         'btn_change_lang': "🌐 Change Language",
         'btn_back_to_game': "⬅️ Back to Game",
-        'btn_all_words': "📜 All Words",
         'choose_lang_prompt': "Please choose your language:",
         'settings_menu_prompt': "⚙️ Settings Menu",
         'upload_prompt': "Send me a `.txt` file with words, each on a new line.",
@@ -54,25 +48,19 @@ TEXTS = {
     },
     'ru': {
         'welcome_new': "👋 Привет, {user}!\n\nПохоже, ты здесь впервые. Пожалуйста, выбери язык:",
-        'welcome_existing': "Твой активный словарь: <b>{dict}</b>\n\nВыбери действие:",
+        'welcome_existing': "Твой активный словарь: <b>{dict}</b>\n\nНажми на кнопку, чтобы получить слово.",
         'choose_dict_prompt': "Отлично! Теперь выбери словарь по умолчанию:",
         'available_dicts': "Доступные словари:",
         'dict_changed': "✅ Словарь по умолчанию изменён на: <b>{dict}</b>.",
         'lets_start': "Теперь можно начинать! Используй кнопки на клавиатуре.",
-        'choose_word_count': "Выбери, сколько слов ты хочешь получить:",
         'no_dict_selected': "Сначала нужно выбрать словарь! Зайди в Настройки -> Сменить словарь.",
         'no_words_in_dict': "В этом словаре нет слов!",
         'random_word_title': "🎲 Слово:",
-        'multiple_words_title': "Слова:",
-        'file_ready': "✅ Твой файл со словами готов:",
-        'whats_next': "Что дальше?",
         'btn_random_word': "🎲 Случайное слово",
-        'btn_get_multiple': "🔢 Несколько слов",
         'btn_settings': "⚙️ Настройки",
         'btn_change_dict': "📚 Сменить словарь",
         'btn_change_lang': "🌐 Сменить язык",
         'btn_back_to_game': "⬅️ Назад в игру",
-        'btn_all_words': "📜 Весь словарь",
         'choose_lang_prompt': "Пожалуйста, выберите язык:",
         'settings_menu_prompt': "⚙️ Меню настроек",
         'upload_prompt': "Отправьте мне файл `.txt` со словами, каждое на новой строке.",
@@ -125,8 +113,9 @@ def get_words_from_dict(filename: str, count: int = 0):
 # --- KEYBOARD GENERATORS ---
 
 def get_main_reply_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    # Убрана кнопка "Несколько слов"
     keyboard = [
-        [get_text('btn_random_word', lang), get_text('btn_get_multiple', lang)],
+        [get_text('btn_random_word', lang)],
         [get_text('btn_settings', lang)]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -150,17 +139,6 @@ def get_dict_selection_inline_keyboard(action_prefix: str) -> InlineKeyboardMark
     keyboard = [[InlineKeyboardButton(d.replace('.txt', ''), callback_data=f"{action_prefix}:{d}")] for d in dictionaries]
     return InlineKeyboardMarkup(keyboard)
 
-def get_multiple_words_inline_keyboard(lang: str) -> InlineKeyboardMarkup:
-    keyboard = [
-        [
-            InlineKeyboardButton("5", callback_data="get_multiple:5"),
-            InlineKeyboardButton("10", callback_data="get_multiple:10"),
-            InlineKeyboardButton("15", callback_data="get_multiple:15"),
-        ],
-        [InlineKeyboardButton(get_text('btn_all_words', lang), callback_data="get_multiple:all")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
 # --- MESSAGE HANDLERS FOR REPLY KEYBOARD ---
 
 async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -179,12 +157,6 @@ async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_html(f"{get_text('random_word_title', lang)} <a href='{dictionary_link}'><b>{word_text}</b></a>")
     else:
         await update.message.reply_text(get_text('no_words_in_dict', lang))
-
-async def handle_get_multiple(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
-    keyboard = get_multiple_words_inline_keyboard(lang)
-    await update.message.reply_text(get_text('choose_word_count', lang), reply_markup=keyboard)
 
 async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -285,7 +257,9 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         logger.info(f"User {user_id} set language to {lang}")
         
         await query.edit_message_text(get_text('choose_dict_prompt', lang))
-        await handle_change_dict(query, context) # Use the handler to show dicts
+        # This is a bit of a trick: we need the `update` object for `handle_change_dict`, 
+        # but `query` doesn't have `message`. We can use `query.message`.
+        await handle_change_dict(query.message, context)
         return
 
     lang = user_language.get(user_id, 'en')
@@ -299,7 +273,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                     f.write(f"\n{word}")
             await query.edit_message_text(get_text('addword_success', lang).format(dict_name=dict_name))
             context.user_data.clear()
-            await show_main_menu_and_welcome(query, context)
+            await show_main_menu_and_welcome(query.message, context)
         return ConversationHandler.END
 
     if data.startswith("set_default_dict:"):
@@ -308,35 +282,8 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set default dict to {dict_name}")
         await query.edit_message_text(get_text('dict_changed', lang).format(dict=dict_name), parse_mode='HTML')
-        await show_main_menu_and_welcome(query, context)
+        await show_main_menu_and_welcome(query.message, context)
         return
-
-    if data.startswith("get_multiple:"):
-        active_dict = user_selected_dict.get(user_id)
-        if not active_dict:
-            await query.edit_message_text(get_text('no_dict_selected', lang))
-            return
-            
-        param = data.split(":")[1]
-        words_to_get = 0 if param == 'all' else int(param)
-        word_list = get_words_from_dict(active_dict, words_to_get)
-
-        if not word_list:
-            await query.edit_message_text(get_text('no_words_in_dict', lang))
-            return
-
-        if len(word_list) <= 10:
-            response_text = get_text('multiple_words_title', lang) + "\n" + "\n".join(
-                f"• <a href='https://{lang}.wiktionary.org/wiki/{quote_plus(w)}'>{w}</a>" for w in word_list
-            )
-            await query.edit_message_text(response_text, parse_mode='HTML')
-        else:
-            file_content = "\n".join(word_list).encode('utf-8')
-            file_in_memory = BytesIO(file_content)
-            await context.bot.send_document(
-                chat_id=query.message.chat_id, document=file_in_memory, filename=f"words_from_{active_dict}"
-            )
-            await query.edit_message_text(get_text('file_ready', lang))
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error("Exception while handling an update:", exc_info=context.error)
@@ -352,16 +299,13 @@ def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
     # --- Handlers for Reply Keyboard buttons ---
-    # We create filters that work for both languages
     RANDOM_WORD_FILTER = filters.Text([TEXTS['en']['btn_random_word'], TEXTS['ru']['btn_random_word']])
-    GET_MULTIPLE_FILTER = filters.Text([TEXTS['en']['btn_get_multiple'], TEXTS['ru']['btn_get_multiple']])
     SETTINGS_FILTER = filters.Text([TEXTS['en']['btn_settings'], TEXTS['ru']['btn_settings']])
     CHANGE_DICT_FILTER = filters.Text([TEXTS['en']['btn_change_dict'], TEXTS['ru']['btn_change_dict']])
     CHANGE_LANG_FILTER = filters.Text([TEXTS['en']['btn_change_lang'], TEXTS['ru']['btn_change_lang']])
     BACK_TO_GAME_FILTER = filters.Text([TEXTS['en']['btn_back_to_game'], TEXTS['ru']['btn_back_to_game']])
 
     application.add_handler(MessageHandler(RANDOM_WORD_FILTER, handle_random_word))
-    application.add_handler(MessageHandler(GET_MULTIPLE_FILTER, handle_get_multiple))
     application.add_handler(MessageHandler(SETTINGS_FILTER, show_settings_menu))
     application.add_handler(MessageHandler(CHANGE_DICT_FILTER, handle_change_dict))
     application.add_handler(MessageHandler(CHANGE_LANG_FILTER, handle_change_lang))
