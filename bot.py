@@ -1,14 +1,19 @@
 import os
 import logging
 import random
+from dotenv import load_dotenv
 from io import BytesIO
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # --- НАСТРОЙКИ ---
-# ВАЖНО: Вставьте сюда ваш токен, полученный от @BotFather
-BOT_TOKEN = "***REMOVED***"
+load_dotenv() # Загружаем переменные из .env файла
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    # Эта строчка остановит запуск, если вы забыли создать .env или указать в нем токен
+    raise ValueError("Не найден BOT_TOKEN в .env файле!")
 # Путь к папке со словарями
 DICT_PATH = "dictionaries/"
 
