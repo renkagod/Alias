@@ -9,7 +9,6 @@ import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, MessageHandler, 
                           filters, ContextTypes, ConversationHandler)
-from telegram.error import NetworkError
 
 # --- CONFIGURATION / НАСТРОЙКИ ---
 load_dotenv()
