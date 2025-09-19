@@ -246,7 +246,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         word = get_words_from_dict(active_dict, 1)
         if word:
             word_text = word[0]
-            google_link = f"https://www.google.com/search?q={quote_plus(word_text)}"
+            google_link = f"https://www.google.com/search?q={quote_plus(word_text)}&hl={lang}"
             await query.edit_message_text(
                 f"{get_text('random_word_title', lang)} <a href='{google_link}'><b>{word_text}</b></a>",
                 parse_mode='HTML'
@@ -290,7 +290,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
         if len(word_list) <= 10:
             response_text = get_text('multiple_words_title', lang) + "\n" + "\n".join(
-                f"• <a href='https://www.google.com/search?q={quote_plus(w)}'>{w}</a>" for w in word_list
+                f"• <a href='https://www.google.com/search?q={quote_plus(w)}&hl={lang}'>{w}</a>" for w in word_list
             )
             await query.edit_message_text(response_text, parse_mode='HTML')
         else:
