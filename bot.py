@@ -4,8 +4,8 @@ import random
 from io import BytesIO
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
+from telegram.error import NetworkError, BadRequest
 import json
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, MessageHandler, 
                           filters, ContextTypes, ConversationHandler)
@@ -246,7 +246,19 @@ async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except NetworkError as e:
+        logger.error(f"Network error on query.answer(): {e}")
+        return # Просто выходим, если не смогли ответить из-за сети
+    except BadRequest as e:
+        if "Query is too old" in str(e):
+            logger.warning("Ignoring an old callback query.")
+            return # Спокойно игнорируем старый запрос и выходим
+        else:
+            logger.error(f"BadRequest on query.answer(): {e}") # Логируем другие BadRequest ошибки
+            return
+
     user_id = query.from_user.id
     data = query.data
 
