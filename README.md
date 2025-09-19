@@ -31,3 +31,42 @@
     ```bash
     python bot.py
     ```
+	
+	
+	# Alias Bot for Telegram
+
+A simple and convenient bot for playing "Alias" with friends directly in Telegram.
+
+## 🚀 Features
+
+  * 🎲 Get random words from different dictionaries.
+  * 🔢 Receive a specified number of words.
+  * ⚙️ Ability to switch between dictionaries.
+  * 🔗 Each word is a clickable link to Google Search for quick clarification of the meaning.
+  * ... (new features can be added here)
+
+## 🔧 Installation and launch
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone [https://github.com/renkagod/Alias.git](https://github.com/renkagod/Alias.git)
+    cd Alias
+    ```
+
+2.  **Install dependencies:**
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure environment variables:**
+
+      * Create a `.env` file in the root folder.
+      * Add your token to it: `BOT_TOKEN="YOUR_BOTFATHER_TOKEN"`
+
+4.  **Start the bot:**
+
+    ```bash
+    python bot.py
+    ```
