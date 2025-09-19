@@ -270,7 +270,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_text(get_text('choose_dict_prompt', lang))
         # This is a bit of a trick: we need the `update` object for `handle_change_dict`, 
         # but `query` doesn't have `message`. We can use `query.message`.
-        await handle_change_dict(query.message, context)
+        await handle_change_dict(update, context)
         return
 
     lang = user_language.get(user_id, 'en')
@@ -284,7 +284,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
                     f.write(f"\n{word}")
             await query.edit_message_text(get_text('addword_success', lang).format(dict_name=dict_name))
             context.user_data.clear()
-            await show_main_menu_and_welcome(query.message, context)
+            await show_main_menu_and_welcome(update, context)
         return ConversationHandler.END
 
     if data.startswith("set_default_dict:"):
@@ -293,7 +293,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set default dict to {dict_name}")
         await query.edit_message_text(get_text('dict_changed', lang).format(dict=dict_name), parse_mode='HTML')
-        await show_main_menu_and_welcome(query.message, context)
+        await show_main_menu_and_welcome(update, context)
         return
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
