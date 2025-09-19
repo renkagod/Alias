@@ -3,7 +3,7 @@ import logging
 import random
 from dotenv import load_dotenv
 from io import BytesIO
-
+from urllib.parse import quote_plus
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
@@ -134,7 +134,14 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     if data == "get_random_word":
         word = get_words_from_dict(active_dict, 1)
         if word:
-            await query.edit_message_text(f"🎲 Слово: <b>{word[0]}</b>", parse_mode='HTML')
+            word_text = word[0]
+            # Создаем безопасную ссылку для Google-поиска
+            google_link = f"https://www.google.com/search?q={quote_plus(word_text)}"
+            # Оборачиваем слово в HTML-тег <a>
+            await query.edit_message_text(
+                f"🎲 Слово: <a href='{google_link}'><b>{word_text}</b></a>",
+                parse_mode='HTML'
+            )
         else:
             await query.edit_message_text("В словаре нет слов или он пуст!")
         # Возвращаем главное меню, чтобы можно было играть дальше
@@ -173,8 +180,10 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
         # 🔥 Новая логика: если слов <= 10, отправляем текстом. Иначе - файлом.
         if len(word_list) <= 10:
-            response_text = "Слова:\n" + "\n".join(f"• {w}" for w in word_list)
-            await query.edit_message_text(response_text)
+            response_text = "Слова:\n" + "\n".join(
+                f"• <a href='https://www.google.com/search?q={quote_plus(w)}'>{w}</a>" for w in word_list
+            )
+            await query.edit_message_text(response_text, parse_mode='HTML')
         else:
             # Создаем файл в памяти
             file_content = "\n".join(word_list).encode('utf-8')
