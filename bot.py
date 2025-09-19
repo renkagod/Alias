@@ -168,13 +168,17 @@ async def show_main_menu_and_welcome(update: Update, context: ContextTypes.DEFAU
     lang = user_language.get(user_id, 'en')
     active_dict = user_selected_dict.get(user_id, "N/A")
     keyboard = get_main_reply_keyboard(lang)
-    await update.message.reply_html(get_text('welcome_existing', lang).format(dict=active_dict), reply_markup=keyboard)
+    # Используем тот же самый приём
+    reply_target = update.message or update.callback_query.message
+    await reply_target.reply_html(get_text('welcome_existing', lang).format(dict=active_dict), reply_markup=keyboard)
 
 async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = user_language.get(user_id, 'en')
     keyboard = get_dict_selection_inline_keyboard("set_default_dict")
-    await update.message.reply_text(get_text('available_dicts', lang), reply_markup=keyboard)
+    # Определяем, куда отвечать: в сообщение от команды или в сообщение с кнопкой
+    reply_target = update.message or update.callback_query.message
+    await reply_target.reply_text(get_text('available_dicts', lang), reply_markup=keyboard)
 
 async def handle_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
