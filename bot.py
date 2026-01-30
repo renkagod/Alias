@@ -1,6 +1,7 @@
 import os
 import logging
 import random
+import aiofiles
 from io import BytesIO
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
@@ -99,10 +100,11 @@ def get_available_dictionaries():
         os.makedirs(DICT_PATH)
     return [f for f in os.listdir(DICT_PATH) if f.endswith('.txt')]
 
-def get_words_from_dict(filename: str, count: int = 0):
+async def get_words_from_dict(filename: str, count: int = 0):
     try:
-        with open(os.path.join(DICT_PATH, filename), 'r', encoding='utf-8') as f:
-            words = [line.strip() for line in f if line.strip()]
+        async with aiofiles.open(os.path.join(DICT_PATH, filename), 'r', encoding='utf-8') as f:
+            content = await f.read()
+        words = [line.strip() for line in content.splitlines() if line.strip()]
         if count == 0:
             return words
         return random.sample(words, min(count, len(words)))
@@ -149,7 +151,7 @@ async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(get_text('no_dict_selected', lang))
         return
 
-    word = get_words_from_dict(active_dict, 1)
+    word = await get_words_from_dict(active_dict, 1)
     if word:
         word_text = word[0]
         dictionary_link = f"https://{lang}.wiktionary.org/wiki/{quote_plus(word_text)}"
