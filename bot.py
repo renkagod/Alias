@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 import random
 from io import BytesIO
@@ -81,9 +82,24 @@ def load_data():
     except (FileNotFoundError, json.JSONDecodeError):
         return {}, {}
 
-def save_data(lang_data, dict_data):
-    with open(USER_DATA_FILE, 'w') as f:
-        json.dump({"user_language": lang_data, "user_selected_dict": dict_data}, f, indent=4)
+_save_lock = None
+
+async def save_data(lang_data, dict_data):
+    global _save_lock
+    if _save_lock is None:
+        _save_lock = asyncio.Lock()
+
+    async with _save_lock:
+        # Create copies to ensure thread safety
+        lang_data_copy = lang_data.copy()
+        dict_data_copy = dict_data.copy()
+
+        def _save():
+            with open(USER_DATA_FILE, 'w') as f:
+                json.dump({"user_language": lang_data_copy, "user_selected_dict": dict_data_copy}, f, indent=4)
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _save)
 
 user_language, user_selected_dict = load_data()
 
@@ -239,7 +255,7 @@ async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await file.download_to_drive(file_path)
         
         user_selected_dict[user_id] = document.file_name
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         
         await update.message.reply_text(get_text('upload_success', lang).format(filename=document.file_name))
         await show_main_menu_and_welcome(update, context)
@@ -268,7 +284,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     if data.startswith("set_lang:"):
         lang = data.split(":")[1]
         user_language[user_id] = lang
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set language to {lang}")
         
         await query.edit_message_text(get_text('choose_dict_prompt', lang))
@@ -294,7 +310,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     if data.startswith("set_default_dict:"):
         dict_name = data.split(":")[1]
         user_selected_dict[user_id] = dict_name
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set default dict to {dict_name}")
         await query.edit_message_text(get_text('dict_changed', lang).format(dict=dict_name), parse_mode='HTML')
         await show_main_menu_and_welcome(update, context)
