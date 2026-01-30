@@ -285,9 +285,13 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         dict_name = data.split(":", 1)[1]
         words = context.user_data.get('words_to_add', [])
         if words:
-            with open(os.path.join(DICT_PATH, dict_name), 'a', encoding='utf-8') as f:
-                for word in words:
-                    f.write(f"\n{word}")
+            def append_words_to_file():
+                with open(os.path.join(DICT_PATH, dict_name), 'a', encoding='utf-8') as f:
+                    for word in words:
+                        f.write(f"\n{word}")
+
+            await asyncio.to_thread(append_words_to_file)
+
             await query.edit_message_text(get_text('addword_success', lang).format(dict_name=dict_name))
             context.user_data.clear()
             await show_main_menu_and_welcome(update, context)
