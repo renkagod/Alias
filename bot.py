@@ -19,6 +19,7 @@ if not BOT_TOKEN:
 
 DICT_PATH = "dictionaries/"
 USER_DATA_FILE = "user_data.json"
+WORDS_CACHE = {}
 
 # --- TEXTS FOR LOCALIZATION (Убраны ключи для кнопки "Несколько слов") ---
 TEXTS = {
@@ -101,8 +102,13 @@ def get_available_dictionaries():
 
 def get_words_from_dict(filename: str, count: int = 0):
     try:
-        with open(os.path.join(DICT_PATH, filename), 'r', encoding='utf-8') as f:
-            words = [line.strip() for line in f if line.strip()]
+        if filename in WORDS_CACHE:
+            words = WORDS_CACHE[filename]
+        else:
+            with open(os.path.join(DICT_PATH, filename), 'r', encoding='utf-8') as f:
+                words = [line.strip() for line in f if line.strip()]
+            WORDS_CACHE[filename] = words
+
         if count == 0:
             return words
         return random.sample(words, min(count, len(words)))
@@ -238,6 +244,10 @@ async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         file_path = os.path.join(DICT_PATH, document.file_name)
         await file.download_to_drive(file_path)
         
+        # Invalidate cache
+        if document.file_name in WORDS_CACHE:
+            del WORDS_CACHE[document.file_name]
+
         user_selected_dict[user_id] = document.file_name
         save_data(user_language, user_selected_dict)
         
@@ -286,6 +296,11 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             with open(os.path.join(DICT_PATH, dict_name), 'a', encoding='utf-8') as f:
                 for word in words:
                     f.write(f"\n{word}")
+
+            # Invalidate cache
+            if dict_name in WORDS_CACHE:
+                del WORDS_CACHE[dict_name]
+
             await query.edit_message_text(get_text('addword_success', lang).format(dict_name=dict_name))
             context.user_data.clear()
             await show_main_menu_and_welcome(update, context)
