@@ -1,4 +1,5 @@
 import os
+import asyncio
 import logging
 import random
 from io import BytesIO
@@ -94,10 +95,11 @@ logger = logging.getLogger(__name__)
 def get_text(key: str, lang: str, default: str = None):
     return TEXTS.get(lang, TEXTS['en']).get(key, default or f"<{key}>")
 
-def get_available_dictionaries():
+async def get_available_dictionaries():
     if not os.path.exists(DICT_PATH):
         os.makedirs(DICT_PATH)
-    return [f for f in os.listdir(DICT_PATH) if f.endswith('.txt')]
+    files = await asyncio.to_thread(os.listdir, DICT_PATH)
+    return [f for f in files if f.endswith('.txt')]
 
 def get_words_from_dict(filename: str, count: int = 0):
     try:
@@ -133,8 +135,8 @@ def get_lang_inline_keyboard() -> InlineKeyboardMarkup:
     ]]
     return InlineKeyboardMarkup(keyboard)
 
-def get_dict_selection_inline_keyboard(action_prefix: str) -> InlineKeyboardMarkup:
-    dictionaries = get_available_dictionaries()
+async def get_dict_selection_inline_keyboard(action_prefix: str) -> InlineKeyboardMarkup:
+    dictionaries = await get_available_dictionaries()
     keyboard = [[InlineKeyboardButton(d.replace('.txt', ''), callback_data=f"{action_prefix}:{d}")] for d in dictionaries]
     return InlineKeyboardMarkup(keyboard)
 
@@ -175,7 +177,7 @@ async def show_main_menu_and_welcome(update: Update, context: ContextTypes.DEFAU
 async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = user_language.get(user_id, 'en')
-    keyboard = get_dict_selection_inline_keyboard("set_default_dict")
+    keyboard = await get_dict_selection_inline_keyboard("set_default_dict")
     # Определяем, куда отвечать: в сообщение от команды или в сообщение с кнопкой
     reply_target = update.message or update.callback_query.message
     await reply_target.reply_text(get_text('available_dicts', lang), reply_markup=keyboard)
@@ -219,7 +221,7 @@ async def addword_receive_words(update: Update, context: ContextTypes.DEFAULT_TY
     user_id = update.effective_user.id
     lang = user_language.get(user_id, 'en')
     
-    keyboard = get_dict_selection_inline_keyboard("addword_to_dict")
+    keyboard = await get_dict_selection_inline_keyboard("addword_to_dict")
     await update.message.reply_text(get_text('addword_choose_dict', lang), reply_markup=keyboard)
     return AWAITING_DICT_CHOICE
 
