@@ -1,96 +1,39 @@
-# Alias Bot для Telegram 🎲
-[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
-[![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
+# Alias Bot
+Telegram-бот для игры в "Alias" с поддержкой мультиязычности и управлением словарями.
 
-🇷🇺 [Русский](#alias-bot-для-telegram) | 🇬🇧 [English](#alias-bot-for-telegram-en)
+## Особенности
+- **Случайные слова**: Мгновенная генерация слов из выбранного словаря.
+- **Определения**: Каждое слово снабжено ссылкой на Викисловарь.
+- **Мультиязычность**: Полная поддержка русского и английского языков.
+- **Администрирование**: Загрузка новых `.txt` словарей и добавление слов через интерфейс бота.
+- **Оптимизация**: Асинхронная работа и кеширование словарей в памяти.
 
-Простой и мощный бот для игры в "Alias" прямо в Telegram. Проект полностью готов к работе в Docker, оптимизирован для высокой производительности и обладает удобной модульной структурой.
+## Быстрый старт (Docker)
+1. Склонируйте репозиторий:
+   ```bash
+   git clone https://github.com/renkagod/Alias.git
+   cd Alias
+   ```
+2. Настройте конфигурацию:
+   ```bash
+   cp .env.example .env
+   # Отредактируйте .env, добавив BOT_TOKEN и ADMIN_ID
+   ```
+3. Запустите проект:
+   ```bash
+   docker compose up -d --build
+   ```
 
----
+## Конфигурация (.env)
+- `BOT_TOKEN`: Токен вашего бота от @BotFather.
+- `ADMIN_ID`: Telegram ID администратора для управления словарями.
 
-## 🚀 Возможности
+## Команды
+- `/start` — Выбор языка и словаря, начало игры.
+- `/dict_upload` — Загрузка `.txt` файла со словами (только админ).
+- `/addword` — Ручное добавление слова в словарь (только админ).
+- `/cancel` — Отмена текущей операции.
 
-*   **🎲 Случайные слова:** Получение слов из активного словаря в один клик.
-*   **🔗 Определения:** Каждое слово — это ссылка на Викисловарь для уточнения значения.
-*   **⚙️ Настройки:** Удобное меню для смены словаря и языка интерфейса.
-*   **🌍 Мультиязычность:** Полная поддержка русского и английского языков.
-*   **✏️ Управление словарями (Админ):**
-    *   Загрузка собственных `.txt` словарей через бота.
-    *   Добавление новых слов прямо в чате.
-*   **🐳 Docker:** Быстрый запуск и изоляция проекта.
-*   **⚡ Оптимизация:** Кэширование словарей в памяти и асинхронный ввод-вывод.
-
-## 🛠 Установка и запуск (Docker)
-
-1.  **Клонируйте репозиторий**:
-    ```bash
-    git clone https://github.com/renkagod/Alias.git
-    cd Alias
-    ```
-
-2.  **Настройте переменные окружения**:
-    Скопируйте пример конфига и впишите ваш `BOT_TOKEN` в `.env`:
-    ```bash
-    cp .env.example .env
-    ```
-
-3.  **Запустите проект**:
-    ```bash
-    docker compose up -d --build
-    ```
-
-Бот автоматически подхватит словари из папки `dictionaries/` и создаст файл данных в папке `data/`.
-
-## 🤖 Команды
-
-*   `/start` — Запуск бота и выбор языка/словаря.
-*   `/dict_upload` — Загрузка файла `.txt` со словами (для админов).
-*   `/addword` — Добавление новых слов в словарь (для админов).
-*   `/cancel` — Отмена текущего действия.
-
----
-
-# Alias Bot for Telegram <a name="alias-bot-for-telegram-en"></a>
-🇬🇧 [English](#alias-bot-for-telegram-en) | 🇷🇺 [Русский](#alias-bot-для-telegram)
-
-A simple and powerful bot for playing "Alias" directly in Telegram. Rewritten for Docker, optimized for performance, and easy to configure.
-
-## 🚀 Features
-
-*   **🎲 Random Words:** Get words from the active dictionary with a single click.
-*   **🔗 Definitions:** Each word is a link to Wiktionary for quick meaning lookup.
-*   **⚙️ Settings:** Convenient menu to change dictionaries and interface language.
-*   **🌍 Multilingual:** Full support for Russian and English.
-*   **✏️ Dictionary Management (Admin):**
-    *   Upload custom `.txt` dictionaries via the bot.
-    *   Add new words directly in the chat.
-*   **🐳 Docker:** Fast deployment and isolation.
-*   **⚡ Performance:** Dictionary caching and asynchronous I/O.
-
-## 🛠 Installation and Launch (Docker)
-
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/renkagod/Alias.git
-    cd Alias
-    ```
-
-2.  **Configure environment variables**:
-    Copy the example config and put your `BOT_TOKEN` in `.env`:
-    ```bash
-    cp .env.example .env
-    ```
-
-3.  **Start the project**:
-    ```bash
-    docker compose up -d --build
-    ```
-
-The bot will automatically pick up dictionaries from the `dictionaries/` folder and create a data file in the `data/` folder.
-
-## 🤖 Commands
-
-*   `/start` — Start the bot and choose language/dictionary.
-*   `/dict_upload` — Upload a `.txt` file with words (for admins).
-*   `/addword` — Add new words to the dictionary (for admins).
-*   `/cancel` — Cancel current action.
+## Структура данных
+- `dictionaries/` — Директория для хранения файлов словарей.
+- `data/` — Хранилище пользовательских настроек (создается автоматически).
