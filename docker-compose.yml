@@ -14,3 +14,11 @@ services:
       - DICT_PATH=/app/dictionaries/
       - USER_DATA_FILE=/app/data/user_data.json
       - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
+        reservations:
+          cpus: '0.10'
+          memory: 64M
