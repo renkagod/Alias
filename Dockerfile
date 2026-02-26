@@ -22,4 +22,4 @@ COPY . .
 RUN mkdir -p /data/dictionaries
 
 # Запуск бота
-CMD ["python", "bot.py"]
+CMD ["python", "main.py"]
