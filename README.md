@@ -1,7 +1,10 @@
 # Alias Bot для Telegram 🎲
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
+
 🇷🇺 [Русский](#alias-bot-для-telegram) | 🇬🇧 [English](#alias-bot-for-telegram-en)
 
-Простой и мощный бот для игры в "Alias" прямо в Telegram. Переписан для работы в Docker, обладает высокой скоростью работы и удобной настройкой.
+Простой и мощный бот для игры в "Alias" прямо в Telegram. Проект полностью готов к работе в Docker, оптимизирован для высокой производительности и обладает удобной модульной структурой.
 
 ---
 
