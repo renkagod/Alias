@@ -12,13 +12,17 @@ _save_lock = asyncio.Lock()
 def load_data():
     try:
         if not os.path.exists(USER_DATA_FILE):
+            # Если файла нет вообще, возвращаем пустые данные
             return {}, {}
         with open(USER_DATA_FILE, 'r') as f:
             data = json.load(f)
+            # Приведение ключей (ID пользователей) к int
             user_language = {int(k): v for k, v in data.get("user_language", {}).items()}
             user_selected_dict = {int(k): v for k, v in data.get("user_selected_dict", {}).items()}
             return user_language, user_selected_dict
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, IsADirectoryError):
+        # Если это папка (ошибка докера) или файл пуст/отсутствует
+        logger.warning(f"Data file {USER_DATA_FILE} is missing, empty, or a directory. Starting fresh.")
         return {}, {}
 
 async def save_data(lang_data, dict_data):

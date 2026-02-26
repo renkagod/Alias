@@ -18,8 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование кода бота
 COPY . .
 
-# Создание папки для данных и словарей
-RUN mkdir -p /data/dictionaries
-
 # Запуск бота
 CMD ["python", "main.py"]
