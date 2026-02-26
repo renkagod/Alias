@@ -3,12 +3,10 @@ DEFAULT_LANG = 'ru'
 
 TEXTS = {
     'en': {
-        'welcome_new': "👋 Hi, {user}!
+        'welcome_new': """👋 Hi, {user}!
 
-Looks like you're new here. Please choose your language:",
-        'welcome_existing': "Your active dictionary: <b>{dict}</b>
-
-Press the button to get a word.",
+Looks like you're new here. Please choose your language:""",
+        'welcome_existing': "Your active dictionary: <b>{dict}</b>\n\nPress the button to get a word.",
         'choose_dict_prompt': "Great! Now choose a default dictionary:",
         'available_dicts': "Available dictionaries:",
         'dict_changed': "✅ Default dictionary changed to: <b>{dict}</b>.",
@@ -31,12 +29,10 @@ Press the button to get a word.",
         'admin_only': "⛔ This command is only for administrators.",
     },
     'ru': {
-        'welcome_new': "👋 Привет, {user}!
+        'welcome_new': """👋 Привет, {user}!
 
-Похоже, ты здесь впервые. Пожалуйста, выбери язык:",
-        'welcome_existing': "Твой активный словарь: <b>{dict}</b>
-
-Нажми на кнопку, чтобы получить слово.",
+Похоже, ты здесь впервые. Пожалуйста, выбери язык:""",
+        'welcome_existing': "Твой активный словарь: <b>{dict}</b>\n\nНажми на кнопку, чтобы получить слово.",
         'choose_dict_prompt': "Отлично! Теперь выбери словарь по умолчанию:",
         'available_dicts': "Доступные словари:",
         'dict_changed': "✅ Словарь по умолчанию изменён на: <b>{dict}</b>.",
