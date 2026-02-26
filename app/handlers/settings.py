@@ -62,8 +62,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
             def append_words_to_file():
                 with open(os.path.join(DICT_PATH, dict_name), 'a', encoding='utf-8') as f:
                     for word in words:
-                        f.write(f"
-{word}")
+                        f.write(f"\n{word}")
             await asyncio.to_thread(append_words_to_file)
             
             if dict_name in WORDS_CACHE:
