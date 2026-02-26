@@ -16,10 +16,25 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN not found in .env file!")
+    raise ValueError("BOT_TOKEN not found in .env file or environment!")
 
-DICT_PATH = "dictionaries/"
-USER_DATA_FILE = "user_data.json"
+# Пути к файлам и папкам
+DICT_PATH = os.getenv("DICT_PATH", "dictionaries/")
+USER_DATA_FILE = os.getenv("USER_DATA_FILE", "user_data.json")
+
+# Настройки поведения
+DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# Список ID админов (через запятую в .env)
+admin_ids_str = os.getenv("ADMIN_IDS", "")
+ADMIN_IDS = [int(i.strip()) for i in admin_ids_str.split(",") if i.strip()]
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
+    level=getattr(logging, LOG_LEVEL, logging.INFO)
+)
+logger = logging.getLogger(__name__)
 
 # --- TEXTS FOR LOCALIZATION (Убраны ключи для кнопки "Несколько слов") ---
 TEXTS = {
@@ -45,6 +60,7 @@ TEXTS = {
         'addword_prompt': "Send me the word(s) you want to add.",
         'addword_choose_dict': "Which dictionary to add the word(s) to?",
         'addword_success': "✅ Word(s) added to `{dict_name}`.",
+        'admin_only': "⛔ This command is only for administrators.",
     },
     'ru': {
         'welcome_new': "👋 Привет, {user}!\n\nПохоже, ты здесь впервые. Пожалуйста, выбери язык:",
@@ -68,12 +84,15 @@ TEXTS = {
         'addword_prompt': "Отправьте мне слово (или слова), которые нужно добавить.",
         'addword_choose_dict': "В какой словарь добавить слова?",
         'addword_success': "✅ Слова добавлены в словарь `{dict_name}`.",
+        'admin_only': "⛔ Эта команда доступна только администраторам.",
     }
 }
 
 # --- DATA MANAGEMENT ---
 def load_data():
     try:
+        if not os.path.exists(USER_DATA_FILE):
+            return {}, {}
         with open(USER_DATA_FILE, 'r') as f:
             data = json.load(f)
             user_language = {int(k): v for k, v in data.get("user_language", {}).items()}
@@ -83,23 +102,27 @@ def load_data():
         return {}, {}
 
 def save_data(lang_data, dict_data):
+    # Создаем папку для файла данных, если её нет (важно для Docker volumes)
+    os.makedirs(os.path.dirname(os.path.abspath(USER_DATA_FILE)) or '.', exist_ok=True)
     with open(USER_DATA_FILE, 'w') as f:
         json.dump({"user_language": lang_data, "user_selected_dict": dict_data}, f, indent=4)
 
 user_language, user_selected_dict = load_data()
 
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 # --- HELPER FUNCTIONS ---
+def is_admin(user_id: int) -> bool:
+    if not ADMIN_IDS:
+        return True
+    return user_id in ADMIN_IDS
+
 def get_text(key: str, lang: str, default: str = None):
-    return TEXTS.get(lang, TEXTS['en']).get(key, default or f"<{key}>")
+    return TEXTS.get(lang, TEXTS.get(DEFAULT_LANG, TEXTS['en'])).get(key, default or f"<{key}>")
 
 async def get_available_dictionaries():
     if not os.path.exists(DICT_PATH):
         os.makedirs(DICT_PATH)
     files = await asyncio.to_thread(os.listdir, DICT_PATH)
-    return [f for f in files if f.endswith('.txt')]
+    return sorted([f for f in files if f.endswith('.txt')])
 
 def get_words_from_dict(filename: str, count: int = 0):
     try:
@@ -144,7 +167,7 @@ async def get_dict_selection_inline_keyboard(action_prefix: str) -> InlineKeyboa
 
 async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     active_dict = user_selected_dict.get(user_id)
 
     if not active_dict:
@@ -161,13 +184,13 @@ async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     keyboard = get_settings_reply_keyboard(lang)
     await update.message.reply_text(get_text('settings_menu_prompt', lang), reply_markup=keyboard)
 
 async def show_main_menu_and_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     active_dict = user_selected_dict.get(user_id, "N/A")
     keyboard = get_main_reply_keyboard(lang)
     # Используем тот же самый приём
@@ -176,7 +199,7 @@ async def show_main_menu_and_welcome(update: Update, context: ContextTypes.DEFAU
 
 async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     keyboard = await get_dict_selection_inline_keyboard("set_default_dict")
     # Определяем, куда отвечать: в сообщение от команды или в сообщение с кнопкой
     reply_target = update.message or update.callback_query.message
@@ -184,7 +207,7 @@ async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def handle_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     keyboard = get_lang_inline_keyboard()
     await update.message.reply_text(get_text('choose_lang_prompt', lang), reply_markup=keyboard)
 
@@ -197,12 +220,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if user.id not in user_language:
         await update.message.reply_html(
-            TEXTS['ru']['welcome_new'].format(user=user.mention_html()),
+            TEXTS[DEFAULT_LANG]['welcome_new'].format(user=user.mention_html()),
             reply_markup=get_lang_inline_keyboard()
         )
         return
 
-    lang = user_language.get(user.id)
+    lang = user_language.get(user.id, DEFAULT_LANG)
     if user.id not in user_selected_dict:
         await handle_change_dict(update, context)
     else:
@@ -212,14 +235,19 @@ AWAITING_WORDS, AWAITING_DICT_CHOICE = range(2)
 
 async def addword_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
+    
+    if not is_admin(user_id):
+        await update.message.reply_text(get_text('admin_only', lang))
+        return ConversationHandler.END
+
     await update.message.reply_text(get_text('addword_prompt', lang), reply_markup=ReplyKeyboardRemove())
     return AWAITING_WORDS
 
 async def addword_receive_words(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['words_to_add'] = update.message.text.splitlines()
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     
     keyboard = await get_dict_selection_inline_keyboard("addword_to_dict")
     await update.message.reply_text(get_text('addword_choose_dict', lang), reply_markup=keyboard)
@@ -227,12 +255,21 @@ async def addword_receive_words(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def dict_upload_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
+    
+    if not is_admin(user_id):
+        await update.message.reply_text(get_text('admin_only', lang))
+        return
+
     await update.message.reply_text(get_text('upload_prompt', lang), reply_markup=ReplyKeyboardRemove())
 
 async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
+
+    if not is_admin(user_id):
+        await update.message.reply_text(get_text('admin_only', lang))
+        return
     
     document = update.message.document
     if document and document.file_name.endswith('.txt'):
@@ -279,9 +316,13 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
         await handle_change_dict(update, context)
         return
 
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
 
     if data.startswith("addword_to_dict:"):
+        if not is_admin(user_id):
+            await query.edit_message_text(get_text('admin_only', lang))
+            return ConversationHandler.END
+
         dict_name = data.split(":", 1)[1]
         words = context.user_data.get('words_to_add', [])
         if words:
@@ -311,7 +352,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
-    lang = user_language.get(user_id, 'en')
+    lang = user_language.get(user_id, DEFAULT_LANG)
     await update.message.reply_text("Action canceled.", reply_markup=get_main_reply_keyboard(lang))
     return ConversationHandler.END
 

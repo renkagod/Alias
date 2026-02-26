@@ -1,0 +1,17 @@
+services:
+  bot:
+    build: .
+    container_name: alias-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Монтируем словари
+      - ./dictionaries:/data/dictionaries
+      # Монтируем файл с данными пользователей (создаем пустой файл, если его нет)
+      - ./user_data.json:/data/user_data.json
+    environment:
+      # Перекрываем пути для Docker, если они не заданы в .env
+      - DICT_PATH=/data/dictionaries/
+      - USER_DATA_FILE=/data/user_data.json
+      - PYTHONUNBUFFERED=1
