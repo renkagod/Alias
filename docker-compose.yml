@@ -6,12 +6,9 @@ services:
     env_file:
       - .env
     volumes:
-      # Монтируем словари отдельно для удобства
-      - ./dictionaries:/app/dictionaries
-      # Монтируем корень проекта в подпапку контейнера для хранения данных
-      - ./:/app/persistent
+      # Всё храним в одной папке data для чистоты
+      - ./data:/app/data
     environment:
-      # Эти пути будут приоритетными для Docker
-      - DICT_PATH=/app/dictionaries/
-      - USER_DATA_FILE=/app/persistent/user_data.json
+      - DICT_PATH=/app/data/dictionaries/
+      - USER_DATA_FILE=/app/data/user_data.json
       - PYTHONUNBUFFERED=1

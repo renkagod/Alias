@@ -27,12 +27,19 @@ def load_data():
 
 async def save_data(lang_data, dict_data):
     async with _save_lock:
+        # Если вдруг на хосте папка с таким именем (косяк докера)
+        if os.path.isdir(USER_DATA_FILE):
+            logger.error(f"FATAL: {USER_DATA_FILE} is a directory! Data NOT saved. Please delete the directory on host.")
+            return
+
         # Создаем копии для потокобезопасности
         lang_copy = {str(k): v for k, v in lang_data.items()}
         dict_copy = {str(k): v for k, v in dict_data.items()}
         
         def _save():
-            os.makedirs(os.path.dirname(os.path.abspath(USER_DATA_FILE)) or '.', exist_ok=True)
+            directory = os.path.dirname(os.path.abspath(USER_DATA_FILE))
+            if directory:
+                os.makedirs(directory, exist_ok=True)
             with open(USER_DATA_FILE, 'w') as f:
                 json.dump({"user_language": lang_copy, "user_selected_dict": dict_copy}, f, indent=4)
         
