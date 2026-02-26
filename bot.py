@@ -2,7 +2,9 @@ import os
 import asyncio
 import logging
 import random
+import aiofiles
 from io import BytesIO
+# ... (остальные импорты)
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 from telegram.error import NetworkError, BadRequest
@@ -14,6 +16,7 @@ from telegram.ext import (Application, CommandHandler, CallbackQueryHandler, Mes
 # --- CONFIGURATION / НАСТРОЙКИ ---
 load_dotenv()
 
+# ... (конфигурация)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN not found in .env file or environment!")
@@ -22,7 +25,12 @@ if not BOT_TOKEN:
 DICT_PATH = os.getenv("DICT_PATH", "dictionaries/")
 USER_DATA_FILE = os.getenv("USER_DATA_FILE", "user_data.json")
 
+# Кэш для слов
+WORDS_CACHE = {}
+_save_lock = asyncio.Lock()
+
 # Настройки поведения
+# ...
 DEFAULT_LANG = os.getenv("DEFAULT_LANG", "ru")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
@@ -101,11 +109,18 @@ def load_data():
     except (FileNotFoundError, json.JSONDecodeError):
         return {}, {}
 
-def save_data(lang_data, dict_data):
-    # Создаем папку для файла данных, если её нет (важно для Docker volumes)
-    os.makedirs(os.path.dirname(os.path.abspath(USER_DATA_FILE)) or '.', exist_ok=True)
-    with open(USER_DATA_FILE, 'w') as f:
-        json.dump({"user_language": lang_data, "user_selected_dict": dict_data}, f, indent=4)
+async def save_data(lang_data, dict_data):
+    async with _save_lock:
+        # Создаем копии для потокобезопасности
+        lang_copy = {str(k): v for k, v in lang_data.items()}
+        dict_copy = {str(k): v for k, v in dict_data.items()}
+        
+        def _save():
+            os.makedirs(os.path.dirname(os.path.abspath(USER_DATA_FILE)) or '.', exist_ok=True)
+            with open(USER_DATA_FILE, 'w') as f:
+                json.dump({"user_language": lang_copy, "user_selected_dict": dict_copy}, f, indent=4)
+        
+        await asyncio.to_thread(_save)
 
 user_language, user_selected_dict = load_data()
 
@@ -121,13 +136,21 @@ def get_text(key: str, lang: str, default: str = None):
 async def get_available_dictionaries():
     if not os.path.exists(DICT_PATH):
         os.makedirs(DICT_PATH)
+    # Используем run_in_executor для листинга директории, чтобы не блокировать цикл событий
     files = await asyncio.to_thread(os.listdir, DICT_PATH)
     return sorted([f for f in files if f.endswith('.txt')])
 
-def get_words_from_dict(filename: str, count: int = 0):
+async def get_words_from_dict(filename: str, count: int = 0):
     try:
-        with open(os.path.join(DICT_PATH, filename), 'r', encoding='utf-8') as f:
-            words = [line.strip() for line in f if line.strip()]
+        if filename in WORDS_CACHE:
+            words = WORDS_CACHE[filename]
+        else:
+            file_path = os.path.join(DICT_PATH, filename)
+            async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                content = await f.read()
+            words = [line.strip() for line in content.splitlines() if line.strip()]
+            WORDS_CACHE[filename] = words
+
         if count == 0:
             return words
         return random.sample(words, min(count, len(words)))
@@ -174,7 +197,7 @@ async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(get_text('no_dict_selected', lang))
         return
 
-    word = get_words_from_dict(active_dict, 1)
+    word = await get_words_from_dict(active_dict, 1)
     if word:
         word_text = word[0]
         dictionary_link = f"https://{lang}.wiktionary.org/wiki/{quote_plus(word_text)}"
@@ -277,8 +300,12 @@ async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         file_path = os.path.join(DICT_PATH, document.file_name)
         await file.download_to_drive(file_path)
         
+        # Инвалидируем кэш для этого словаря
+        if document.file_name in WORDS_CACHE:
+            del WORDS_CACHE[document.file_name]
+            
         user_selected_dict[user_id] = document.file_name
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         
         await update.message.reply_text(get_text('upload_success', lang).format(filename=document.file_name))
         await show_main_menu_and_welcome(update, context)
@@ -307,7 +334,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     if data.startswith("set_lang:"):
         lang = data.split(":")[1]
         user_language[user_id] = lang
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set language to {lang}")
         
         await query.edit_message_text(get_text('choose_dict_prompt', lang))
@@ -333,6 +360,10 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
             await asyncio.to_thread(append_words_to_file)
 
+            # Инвалидируем кэш для этого словаря
+            if dict_name in WORDS_CACHE:
+                del WORDS_CACHE[dict_name]
+
             await query.edit_message_text(get_text('addword_success', lang).format(dict_name=dict_name))
             context.user_data.clear()
             await show_main_menu_and_welcome(update, context)
@@ -341,7 +372,7 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     if data.startswith("set_default_dict:"):
         dict_name = data.split(":")[1]
         user_selected_dict[user_id] = dict_name
-        save_data(user_language, user_selected_dict)
+        await save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set default dict to {dict_name}")
         await query.edit_message_text(get_text('dict_changed', lang).format(dict=dict_name), parse_mode='HTML')
         await show_main_menu_and_welcome(update, context)
