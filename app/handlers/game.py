@@ -10,21 +10,37 @@ from ..config import DEFAULT_LANG, logger
 
 async def fetch_definition(word: str, lang: str) -> str:
     """Fetches a brief definition from Wiktionary API."""
+    # Wiktionary is case-sensitive, usually titles are lowercase or capitalized
+    # We'll try lowercase first as most dictionary words are lowercase
+    word = word.strip().lower()
     url = f"https://{lang}.wiktionary.org/api/rest_v1/page/definition/{quote_plus(word)}"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.get(url)
+            
+            # If not found, try Capitalized version
+            if response.status_code == 404:
+                word = word.capitalize()
+                url = f"https://{lang}.wiktionary.org/api/rest_v1/page/definition/{quote_plus(word)}"
+                response = await client.get(url)
+
             if response.status_code != 200:
                 return None
             
             data = response.json()
-            # Wiktionary returns a list of parts of speech
-            # We take the first definition of the first part of speech
-            for pos in data:
-                if "definitions" in pos and pos["definitions"]:
+            # The API returns a dict keyed by language code (e.g., {"ru": [...]})
+            lang_data = data.get(lang, [])
+            if not lang_data and data:
+                # Fallback to the first available language if requested isn't there
+                lang_data = next(iter(data.values()))
+
+            for pos in lang_data:
+                if isinstance(pos, dict) and "definitions" in pos and pos["definitions"]:
                     first_def = pos["definitions"][0]["definition"]
-                    # Clean up HTML tags from definition
+                    # Clean up HTML tags and remove examples/nested info if any
                     clean_def = re.sub(r'<[^>]+>', '', first_def)
+                    # Wiktionary sometimes includes wiki-markup or extra spaces
+                    clean_def = clean_def.replace('[[', '').replace(']]', '')
                     return clean_def.strip()
     except Exception as e:
         logger.error(f"Error fetching definition for {word}: {e}")
