@@ -209,17 +209,15 @@ def _build_word_message(word: str, lang: str, definitions: list[str] | None = No
         # 2. Each definition on a new line with double newline for better spacing
         spoiler_content = ""
         for index, item in enumerate(definitions):
-            # 3. Bold common Wiktionary labels (abbreviations ending with a dot or specific labels)
-            # Examples: 'разг.', 'физ.', 'перен.', 'биол.'
-            item_formatted = re.sub(r'^([а-яё]{2,6}\.)', r'<b>\1</b>', item)
+            # 3. Bold Wiktionary labels (e.g., 'разг.', 'физ., техн.', 'с.-х.')
+            # We look for one or more cyrillic abbreviations at the start
+            item_escaped = html_lib.escape(item)
+            # Regex matches sequences like "разг. ", "физ., техн. ", "с.-х. " etc.
+            item_bolded = re.sub(r'^((?:[а-яё-]+\.\s*,?\s*)+)', r'<b>\1</b>', item_escaped)
             
             prefix = f"{index + 1}. " if len(definitions) > 1 else "• "
-            # Use raw f-string to insert unescaped bold tags but escaped text content
-            # Wait, the previous logic escaped the bold tags. Let's fix that.
-            item_escaped = html_lib.escape(item)
-            item_bolded = re.sub(r'^([а-яё]{2,6}\.)', r'<b>\1</b>', item_escaped)
-            
             spoiler_content += f"{prefix}{item_bolded}\n\n"
+
         
         message_text += f"{spoiler_content.strip()}</tg-spoiler>"
 
