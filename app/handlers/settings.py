@@ -13,21 +13,45 @@ from .ui import (get_settings_reply_keyboard, get_dict_selection_inline_keyboard
 async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
-    keyboard = get_settings_reply_keyboard(lang)
-    await update.message.reply_text(get_text('settings_menu_prompt', lang), reply_markup=keyboard)
+    active_dict = user_selected_dict.get(user_id, "N/A")
+    lang_name = "🇷🇺 Русский" if lang == "ru" else "🇬🇧 English"
+    
+    text = get_text('settings_info', lang).format(
+        lang_name=lang_name,
+        dict_name=active_dict
+    )
+    keyboard = get_settings_inline_keyboard(lang)
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, reply_markup=keyboard, parse_mode='HTML')
+    else:
+        await update.message.reply_html(text, reply_markup=keyboard)
 
-async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE, is_inline=False):
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
     keyboard = await get_dict_selection_inline_keyboard("set_default_dict")
+    
+    # Add a back button to settings if it's coming from settings
+    if is_inline:
+        keyboard.inline_keyboard.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+
     reply_target = update.message or update.callback_query.message
-    await reply_target.reply_text(get_text('available_dicts', lang), reply_markup=keyboard)
+    if update.callback_query:
+        await update.callback_query.edit_message_text(get_text('available_dicts', lang), reply_markup=keyboard)
+    else:
+        await reply_target.reply_text(get_text('available_dicts', lang), reply_markup=keyboard)
 
 async def handle_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
-    keyboard = get_lang_inline_keyboard()
-    await update.message.reply_text(get_text('choose_lang_prompt', lang), reply_markup=keyboard)
+    keyboard = get_lang_inline_keyboard("set_lang")
+    keyboard.inline_keyboard.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+    
+    if update.callback_query:
+        await update.callback_query.edit_message_text(get_text('choose_lang_prompt', lang), reply_markup=keyboard)
+    else:
+        await update.message.reply_text(get_text('choose_lang_prompt', lang), reply_markup=keyboard)
 
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from .common import show_main_menu_and_welcome
@@ -40,14 +64,36 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     user_id = query.from_user.id
     data = query.data
 
+    if data == "settings_lang":
+        await handle_change_lang(update, context)
+        return
+    
+    if data == "settings_dict":
+        await handle_change_dict(update, context, is_inline=True)
+        return
+    
+    if data == "settings_back":
+        await show_settings_menu(update, context)
+        return
+
+    if data == "settings_close":
+        await query.delete_message()
+        return
+
     if data.startswith("set_lang:"):
         lang = data.split(":")[1]
         user_language[user_id] = lang
         await save_data(user_language, user_selected_dict)
         logger.info(f"User {user_id} set language to {lang}")
-        await query.edit_message_text(get_text('choose_dict_prompt', lang))
-        await handle_change_dict(update, context)
+        
+        # If it was an initial setup, proceed to dict choice
+        if not user_selected_dict.get(user_id):
+            await query.edit_message_text(get_text('choose_dict_prompt', lang))
+            await handle_change_dict(update, context)
+        else:
+            await show_settings_menu(update, context)
         return
+
 
     lang = user_language.get(user_id, DEFAULT_LANG)
 

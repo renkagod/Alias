@@ -36,8 +36,9 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
     from telegram.ext import ConversationHandler
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
-    await update.message.reply_text("Action canceled.", reply_markup=get_main_reply_keyboard(lang))
+    await update.message.reply_text(get_text('action_canceled', lang), reply_markup=get_main_reply_keyboard(lang))
     return ConversationHandler.END
+
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error("Exception while handling an update:", exc_info=context.error)

@@ -18,17 +18,14 @@ def main():
     # Filters for Reply Keyboard buttons
     RANDOM_WORD_FILTER = filters.Text([TEXTS['en']['btn_random_word'], TEXTS['ru']['btn_random_word']])
     SETTINGS_FILTER = filters.Text([TEXTS['en']['btn_settings'], TEXTS['ru']['btn_settings']])
-    CHANGE_DICT_FILTER = filters.Text([TEXTS['en']['btn_change_dict'], TEXTS['ru']['btn_change_dict']])
-    CHANGE_LANG_FILTER = filters.Text([TEXTS['en']['btn_change_lang'], TEXTS['ru']['btn_change_lang']])
     BACK_TO_GAME_FILTER = filters.Text([TEXTS['en']['btn_back_to_game'], TEXTS['ru']['btn_back_to_game']])
 
     # Basic handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(RANDOM_WORD_FILTER, handle_random_word))
     application.add_handler(MessageHandler(SETTINGS_FILTER, show_settings_menu))
-    application.add_handler(MessageHandler(CHANGE_DICT_FILTER, handle_change_dict))
-    application.add_handler(MessageHandler(CHANGE_LANG_FILTER, handle_change_lang))
     application.add_handler(MessageHandler(BACK_TO_GAME_FILTER, show_main_menu_and_welcome))
+
     
     # Admin & Word addition handlers
     addword_conv_handler = ConversationHandler(

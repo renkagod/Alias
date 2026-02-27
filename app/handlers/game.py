@@ -7,15 +7,17 @@ from ..texts import get_text
 from ..config import DEFAULT_LANG
 
 async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from .settings import handle_change_dict
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
     active_dict = user_selected_dict.get(user_id)
 
     if not active_dict:
-        await update.message.reply_text(get_text('no_dict_selected', lang))
+        await handle_change_dict(update, context)
         return
 
     word = await get_words_from_dict(active_dict, 1)
+
     if word:
         word_text = word[0]
         dictionary_link = f"https://{lang}.wiktionary.org/wiki/{quote_plus(word_text)}"

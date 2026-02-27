@@ -55,4 +55,5 @@ async def dict_upload_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text(get_text('upload_success', lang).format(filename=document.file_name))
         await show_main_menu_and_welcome(update, context)
     else:
-        await update.message.reply_text("Please send a .txt file.")
+        await update.message.reply_text(get_text('invalid_file_type', lang))
+

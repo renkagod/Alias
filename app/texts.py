@@ -19,16 +19,22 @@ Looks like you're new here. Please choose your language:""",
         'btn_change_dict': "📚 Change Dictionary",
         'btn_change_lang': "🌐 Change Language",
         'btn_back_to_game': "⬅️ Back to Game",
+        'btn_close': "❌ Close",
         'choose_lang_prompt': "Please choose your language:",
         'settings_menu_prompt': "⚙️ Settings Menu",
+        'settings_info': "<b>Current Settings:</b>\n🌐 Language: {lang_name}\n📚 Dictionary: {dict_name}",
         'upload_prompt': "Send me a `.txt` file with words, each on a new line.",
+
         'upload_success': "✅ Dictionary `{filename}` uploaded and set as active.",
         'addword_prompt': "Send me the word(s) you want to add.",
         'addword_choose_dict': "Which dictionary to add the word(s) to?",
         'addword_success': "✅ Word(s) added to `{dict_name}`.",
         'admin_only': "⛔ This command is only for administrators.",
+        'action_canceled': "Action canceled.",
+        'invalid_file_type': "Please send a `.txt` file.",
     },
     'ru': {
+
         'welcome_new': """👋 Привет, {user}!
 
 Похоже, ты здесь впервые. Пожалуйста, выбери язык:""",
@@ -45,16 +51,22 @@ Looks like you're new here. Please choose your language:""",
         'btn_change_dict': "📚 Сменить словарь",
         'btn_change_lang': "🌐 Сменить язык",
         'btn_back_to_game': "⬅️ Назад в игру",
+        'btn_close': "❌ Закрыть",
         'choose_lang_prompt': "Пожалуйста, выберите язык:",
         'settings_menu_prompt': "⚙️ Меню настроек",
+        'settings_info': "<b>Текущие настройки:</b>\n🌐 Язык: {lang_name}\n📚 Словарь: {dict_name}",
         'upload_prompt': "Отправьте мне файл `.txt` со словами, каждое на новой строке.",
+
         'upload_success': "✅ Словарь `{filename}` загружен и установлен как активный.",
         'addword_prompt': "Отправьте мне слово (или слова), которые нужно добавить.",
         'addword_choose_dict': "В какой словарь добавить слова?",
         'addword_success': "✅ Слова добавлены в словарь `{dict_name}`.",
         'admin_only': "⛔ Эта команда доступна только администраторам.",
+        'action_canceled': "Действие отменено.",
+        'invalid_file_type': "Пожалуйста, отправьте файл формата `.txt`.",
     }
 }
+
 
 def get_text(key: str, lang: str, default_lang: str = 'ru'):
     return TEXTS.get(lang, TEXTS.get(default_lang, TEXTS['en'])).get(key, f"<{key}>")
