@@ -7,7 +7,7 @@ from ..config import DEFAULT_LANG, logger, DICT_PATH, is_admin
 from ..texts import get_text
 from ..data_manager import (user_language, user_selected_dict, save_data, 
                             WORDS_CACHE, get_available_dictionaries)
-from .ui import (get_settings_reply_keyboard, get_dict_selection_inline_keyboard, 
+from .ui import (get_settings_inline_keyboard, get_dict_selection_inline_keyboard, 
                  get_lang_inline_keyboard)
 
 async def show_settings_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
