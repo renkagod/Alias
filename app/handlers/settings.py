@@ -34,7 +34,9 @@ async def handle_change_dict(update: Update, context: ContextTypes.DEFAULT_TYPE,
     
     # Add a back button to settings if it's coming from settings
     if is_inline:
-        keyboard.inline_keyboard.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+        inline_kb = list(keyboard.inline_keyboard)
+        inline_kb.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+        keyboard = InlineKeyboardMarkup(inline_kb)
 
     reply_target = update.message or update.callback_query.message
     if update.callback_query:
@@ -46,7 +48,10 @@ async def handle_change_lang(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
     keyboard = get_lang_inline_keyboard("set_lang")
-    keyboard.inline_keyboard.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+    
+    inline_kb = list(keyboard.inline_keyboard)
+    inline_kb.append([InlineKeyboardButton(get_text('btn_back_to_game', lang), callback_data="settings_back")])
+    keyboard = InlineKeyboardMarkup(inline_kb)
     
     if update.callback_query:
         await update.callback_query.edit_message_text(get_text('choose_lang_prompt', lang), reply_markup=keyboard)
