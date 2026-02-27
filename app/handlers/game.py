@@ -209,11 +209,16 @@ def _build_word_message(word: str, lang: str, definitions: list[str] | None = No
         # 2. Each definition on a new line with double newline for better spacing
         spoiler_content = ""
         for index, item in enumerate(definitions):
-            # 3. Bold Wiktionary labels (e.g., 'разг.', 'физ., техн.', 'с.-х.')
-            # We look for one or more cyrillic abbreviations at the start
+            # 3. Bold Wiktionary labels (e.g., 'разг.', 'физ., техн.', 'сленг', 'ж. р.')
             item_escaped = html_lib.escape(item)
-            # Regex matches sequences like "разг. ", "физ., техн. ", "с.-х. " etc.
-            item_bolded = re.sub(r'^((?:[а-яё-]+\.\s*,?\s*)+)', r'<b>\1</b>', item_escaped)
+            
+            # Regex to match Wiktionary labels at the start:
+            # - Words ending with a dot (incl. hyphens): 'разг.', 'с.-х.'
+            # - Short specific words without dots: 'сленг', 'табу', 'кино'
+            # - Multi-part labels: 'вводн. сл.'
+            # It matches sequences of these separated by spaces or commas.
+            label_regex = r'^((?:(?:[а-яё0-9-+]+\.|\bсленг\b|\bтабу\b|\bкино\b)\s*,?\s*)+)'
+            item_bolded = re.sub(label_regex, r'<b>\1</b>', item_escaped)
             
             prefix = f"{index + 1}. " if len(definitions) > 1 else "• "
             spoiler_content += f"{prefix}{item_bolded}\n\n"
