@@ -202,11 +202,26 @@ def _build_word_message(word: str, lang: str, definitions: list[str] | None = No
     message_text = f"{get_text('random_word_title', lang)} <a href='{dictionary_link}'><b>{safe_word}</b></a>"
 
     if definitions:
-        spoiler_lines = "\n".join(
-            f"{index + 1}. {html_lib.escape(item)}" for index, item in enumerate(definitions)
-        )
         title = html_lib.escape(get_text("definition_title", lang))
-        message_text += f"\n\n<tg-spoiler>📖 <b>{title}:</b>\n{spoiler_lines}</tg-spoiler>"
+        # 1. Title is OUTSIDE the spoiler
+        message_text += f"\n\n📖 <b>{title}:</b>\n<tg-spoiler>"
+        
+        # 2. Each definition on a new line with double newline for better spacing
+        spoiler_content = ""
+        for index, item in enumerate(definitions):
+            # 3. Bold common Wiktionary labels (abbreviations ending with a dot or specific labels)
+            # Examples: 'разг.', 'физ.', 'перен.', 'биол.'
+            item_formatted = re.sub(r'^([а-яё]{2,6}\.)', r'<b>\1</b>', item)
+            
+            prefix = f"{index + 1}. " if len(definitions) > 1 else "• "
+            # Use raw f-string to insert unescaped bold tags but escaped text content
+            # Wait, the previous logic escaped the bold tags. Let's fix that.
+            item_escaped = html_lib.escape(item)
+            item_bolded = re.sub(r'^([а-яё]{2,6}\.)', r'<b>\1</b>', item_escaped)
+            
+            spoiler_content += f"{prefix}{item_bolded}\n\n"
+        
+        message_text += f"{spoiler_content.strip()}</tg-spoiler>"
 
     return message_text
 
