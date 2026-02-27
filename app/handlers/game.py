@@ -35,13 +35,18 @@ async def fetch_definition(word: str, lang: str) -> str:
                 lang_data = next(iter(data.values()))
 
             for pos in lang_data:
-                if isinstance(pos, dict) and "definitions" in pos and pos["definitions"]:
-                    first_def = pos["definitions"][0]["definition"]
-                    # Clean up HTML tags and remove examples/nested info if any
-                    clean_def = re.sub(r'<[^>]+>', '', first_def)
-                    # Wiktionary sometimes includes wiki-markup or extra spaces
-                    clean_def = clean_def.replace('[[', '').replace(']]', '')
-                    return clean_def.strip()
+                if isinstance(pos, dict) and "definitions" in pos:
+                    for definition_obj in pos["definitions"]:
+                        if "definition" in definition_obj:
+                            raw_def = definition_obj["definition"]
+                            # 1. Clean up HTML tags
+                            clean_def = re.sub(r'<[^>]+>', '', raw_def)
+                            # 2. Clean up wiki-links [[target|text]] -> text or [[text]] -> text
+                            clean_def = re.sub(r'\[\[(?:[^|\]]*\|)?([^\]]+)\]\]', r'\1', clean_def)
+                            # 3. Basic cleanup
+                            clean_def = clean_def.strip()
+                            if clean_def:
+                                return clean_def
     except Exception as e:
         logger.error(f"Error fetching definition for {word}: {e}")
     return None
