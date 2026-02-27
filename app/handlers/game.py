@@ -12,7 +12,7 @@ async def fetch_definition_ru(word: str) -> str:
     """Fetches definition from Russian Wiktionary using MediaWiki Action API."""
     url = f"https://ru.wiktionary.org/w/api.php?action=query&prop=extracts&titles={quote_plus(word)}&format=json"
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with httpx.AsyncClient(timeout=3.0, headers={"User-Agent": "AliasTelegramBot/1.0 (https://github.com/renkagod/Alias)"}) as client:
             response = await client.get(url)
             if response.status_code == 200:
                 data = response.json()
@@ -25,6 +25,8 @@ async def fetch_definition_ru(word: str) -> str:
                     if response.status_code == 200:
                         data = response.json()
                         pages = data.get("query", {}).get("pages", {})
+                    else:
+                        logger.error(f"MediaWiki API failed for {word.capitalize()} with status: {response.status_code}")
 
                 page = next(iter(pages.values()), {})
                 html = page.get("extract", "")
@@ -41,6 +43,8 @@ async def fetch_definition_ru(word: str) -> str:
                                 if clean_def and not clean_def.startswith("Отсутствует пример"):
                                     clean_def = re.sub(r'\s+', ' ', clean_def)
                                     return clean_def
+            else:
+                logger.error(f"MediaWiki API failed for {word} with status: {response.status_code}")
     except Exception as e:
         logger.error(f"Error fetching RU definition for {word}: {e}")
     return None
@@ -49,7 +53,7 @@ async def fetch_definition_en(word: str) -> str:
     """Fetches definition from English Wiktionary using REST API."""
     url = f"https://en.wiktionary.org/api/rest_v1/page/definition/{quote_plus(word)}"
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        async with httpx.AsyncClient(timeout=3.0, headers={"User-Agent": "AliasTelegramBot/1.0 (https://github.com/renkagod/Alias)"}) as client:
             response = await client.get(url)
             
             if response.status_code == 404:
