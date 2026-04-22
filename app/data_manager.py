@@ -7,7 +7,7 @@ import aiofiles
 from .config import USER_DATA_FILE, DICT_PATH, logger
 
 # Кэш для слов
-MAX_WORDS_CACHE_SIZE = 5
+MAX_WORDS_CACHE_SIZE = 20
 WORDS_CACHE: OrderedDict[str, list[str]] = OrderedDict()
 _save_lock = asyncio.Lock()
 

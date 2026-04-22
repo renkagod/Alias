@@ -196,7 +196,6 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
                 break
 
     DEFINITION_CACHE[cache_key] = definitions
-    DEFINITION_CACHE.move_to_end(cache_key)
     while len(DEFINITION_CACHE) > MAX_DEFINITION_CACHE_SIZE:
         DEFINITION_CACHE.popitem(last=False)
     return definitions
