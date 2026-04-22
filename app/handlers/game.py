@@ -3,6 +3,7 @@ import html as html_lib
 import json
 import re
 import unicodedata
+from collections import OrderedDict
 import urllib.error
 import urllib.request
 from urllib.parse import quote_plus
@@ -19,7 +20,8 @@ WIKTIONARY_USER_AGENT = "AliasTelegramBot/1.0 (https://github.com/renkagod/Alias
 DEFINITION_TIMEOUT = 2.5
 MAX_DEFINITIONS = 3
 MAX_DEFINITION_LENGTH = 220
-DEFINITION_CACHE: dict[tuple[str, str], list[str]] = {}
+MAX_DEFINITION_CACHE_SIZE = 500
+DEFINITION_CACHE: OrderedDict[tuple[str, str], list[str]] = OrderedDict()
 
 
 def _normalize_ws(text: str) -> str:
@@ -159,6 +161,7 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
     normalized_word = word.strip().lower()
     cache_key = (lang, normalized_word)
     if cache_key in DEFINITION_CACHE:
+        DEFINITION_CACHE.move_to_end(cache_key)
         return DEFINITION_CACHE[cache_key]
 
     candidates = [normalized_word]
@@ -193,6 +196,9 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
                 break
 
     DEFINITION_CACHE[cache_key] = definitions
+    DEFINITION_CACHE.move_to_end(cache_key)
+    while len(DEFINITION_CACHE) > MAX_DEFINITION_CACHE_SIZE:
+        DEFINITION_CACHE.popitem(last=False)
     return definitions
 
 

@@ -2,12 +2,21 @@ import os
 import json
 import asyncio
 import random
+from collections import OrderedDict
 import aiofiles
 from .config import USER_DATA_FILE, DICT_PATH, logger
 
 # Кэш для слов
-WORDS_CACHE = {}
+MAX_WORDS_CACHE_SIZE = 5
+WORDS_CACHE: OrderedDict[str, list[str]] = OrderedDict()
 _save_lock = asyncio.Lock()
+
+
+def _cache_words(filename: str, words: list[str]) -> None:
+    WORDS_CACHE[filename] = words
+    WORDS_CACHE.move_to_end(filename)
+    while len(WORDS_CACHE) > MAX_WORDS_CACHE_SIZE:
+        WORDS_CACHE.popitem(last=False)
 
 def load_data():
     try:
@@ -56,12 +65,16 @@ async def get_words_from_dict(filename: str, count: int = 0):
     try:
         if filename in WORDS_CACHE:
             words = WORDS_CACHE[filename]
+            WORDS_CACHE.move_to_end(filename)
         else:
             file_path = os.path.join(DICT_PATH, filename)
             async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
-                content = await f.read()
-            words = [line.strip() for line in content.splitlines() if line.strip()]
-            WORDS_CACHE[filename] = words
+                words = []
+                async for line in f:
+                    stripped = line.strip()
+                    if stripped:
+                        words.append(stripped)
+            _cache_words(filename, words)
 
         if count == 0:
             return words
