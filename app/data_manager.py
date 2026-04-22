@@ -3,7 +3,6 @@ import json
 import asyncio
 import random
 from collections import OrderedDict
-from threading import Lock
 import aiofiles
 from .config import USER_DATA_FILE, DICT_PATH, logger
 
@@ -11,15 +10,20 @@ from .config import USER_DATA_FILE, DICT_PATH, logger
 MAX_WORDS_CACHE_SIZE = 20
 WORDS_CACHE: OrderedDict[str, list[str]] = OrderedDict()
 _save_lock = asyncio.Lock()
-_words_cache_lock = Lock()
+_words_cache_lock = asyncio.Lock()
 
 
-def _cache_words(filename: str, words: list[str]) -> None:
-    with _words_cache_lock:
+async def _cache_words(filename: str, words: list[str]) -> list[str]:
+    async with _words_cache_lock:
+        cached_words = WORDS_CACHE.get(filename)
+        if cached_words is not None:
+            WORDS_CACHE.move_to_end(filename)
+            return cached_words
+
         WORDS_CACHE[filename] = words
-        WORDS_CACHE.move_to_end(filename)
         while len(WORDS_CACHE) > MAX_WORDS_CACHE_SIZE:
             WORDS_CACHE.popitem(last=False)
+        return words
 
 def load_data():
     try:
@@ -66,7 +70,7 @@ async def get_available_dictionaries():
 
 async def get_words_from_dict(filename: str, count: int = 0):
     try:
-        with _words_cache_lock:
+        async with _words_cache_lock:
             words = WORDS_CACHE.get(filename)
             if words is not None:
                 WORDS_CACHE.move_to_end(filename)
@@ -79,7 +83,7 @@ async def get_words_from_dict(filename: str, count: int = 0):
                     stripped = line.strip()
                     if stripped:
                         words.append(stripped)
-            _cache_words(filename, words)
+            words = await _cache_words(filename, words)
 
         if count == 0:
             return words
@@ -87,12 +91,11 @@ async def get_words_from_dict(filename: str, count: int = 0):
     except FileNotFoundError:
         return []
 
-def clear_cache(filename: str = None):
-    with _words_cache_lock:
+async def clear_cache(filename: str = None):
+    async with _words_cache_lock:
         if filename:
-            if filename in WORDS_CACHE:
-                del WORDS_CACHE[filename]
-        else:
-            WORDS_CACHE.clear()
+            WORDS_CACHE.pop(filename, None)
+            return
+        WORDS_CACHE.clear()
 
 user_language, user_selected_dict = load_data()
