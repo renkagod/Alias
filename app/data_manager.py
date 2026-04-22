@@ -91,11 +91,10 @@ async def get_words_from_dict(filename: str, count: int = 0):
     except FileNotFoundError:
         return []
 
-async def clear_cache(filename: str = None):
-    async with _words_cache_lock:
-        if filename:
-            WORDS_CACHE.pop(filename, None)
-            return
-        WORDS_CACHE.clear()
+def clear_cache(filename: str = None):
+    if filename:
+        WORDS_CACHE.pop(filename, None)
+        return
+    WORDS_CACHE.clear()
 
 user_language, user_selected_dict = load_data()
