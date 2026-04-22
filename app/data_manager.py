@@ -3,6 +3,7 @@ import json
 import asyncio
 import random
 from collections import OrderedDict
+from threading import Lock
 import aiofiles
 from .config import USER_DATA_FILE, DICT_PATH, logger
 
@@ -10,13 +11,15 @@ from .config import USER_DATA_FILE, DICT_PATH, logger
 MAX_WORDS_CACHE_SIZE = 20
 WORDS_CACHE: OrderedDict[str, list[str]] = OrderedDict()
 _save_lock = asyncio.Lock()
+_words_cache_lock = Lock()
 
 
 def _cache_words(filename: str, words: list[str]) -> None:
-    WORDS_CACHE[filename] = words
-    WORDS_CACHE.move_to_end(filename)
-    while len(WORDS_CACHE) > MAX_WORDS_CACHE_SIZE:
-        WORDS_CACHE.popitem(last=False)
+    with _words_cache_lock:
+        WORDS_CACHE[filename] = words
+        WORDS_CACHE.move_to_end(filename)
+        while len(WORDS_CACHE) > MAX_WORDS_CACHE_SIZE:
+            WORDS_CACHE.popitem(last=False)
 
 def load_data():
     try:
@@ -63,10 +66,12 @@ async def get_available_dictionaries():
 
 async def get_words_from_dict(filename: str, count: int = 0):
     try:
-        if filename in WORDS_CACHE:
-            words = WORDS_CACHE[filename]
-            WORDS_CACHE.move_to_end(filename)
-        else:
+        with _words_cache_lock:
+            words = WORDS_CACHE.get(filename)
+            if words is not None:
+                WORDS_CACHE.move_to_end(filename)
+
+        if words is None:
             file_path = os.path.join(DICT_PATH, filename)
             async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                 words = []
@@ -83,10 +88,11 @@ async def get_words_from_dict(filename: str, count: int = 0):
         return []
 
 def clear_cache(filename: str = None):
-    if filename:
-        if filename in WORDS_CACHE:
-            del WORDS_CACHE[filename]
-    else:
-        WORDS_CACHE.clear()
+    with _words_cache_lock:
+        if filename:
+            if filename in WORDS_CACHE:
+                del WORDS_CACHE[filename]
+        else:
+            WORDS_CACHE.clear()
 
 user_language, user_selected_dict = load_data()

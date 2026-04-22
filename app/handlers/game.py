@@ -4,6 +4,7 @@ import json
 import re
 import unicodedata
 from collections import OrderedDict
+from threading import Lock
 import urllib.error
 import urllib.request
 from urllib.parse import quote_plus
@@ -22,6 +23,7 @@ MAX_DEFINITIONS = 3
 MAX_DEFINITION_LENGTH = 220
 MAX_DEFINITION_CACHE_SIZE = 500
 DEFINITION_CACHE: OrderedDict[tuple[str, str], list[str]] = OrderedDict()
+_definition_cache_lock = Lock()
 
 
 def _normalize_ws(text: str) -> str:
@@ -160,9 +162,10 @@ def _extract_en_definitions(definition_data: dict, word: str) -> list[str]:
 async def fetch_definitions(word: str, lang: str) -> list[str]:
     normalized_word = word.strip().lower()
     cache_key = (lang, normalized_word)
-    if cache_key in DEFINITION_CACHE:
-        DEFINITION_CACHE.move_to_end(cache_key)
-        return DEFINITION_CACHE[cache_key]
+    with _definition_cache_lock:
+        if cache_key in DEFINITION_CACHE:
+            DEFINITION_CACHE.move_to_end(cache_key)
+            return DEFINITION_CACHE[cache_key]
 
     candidates = [normalized_word]
     if normalized_word:
@@ -195,9 +198,10 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
             if definitions:
                 break
 
-    DEFINITION_CACHE[cache_key] = definitions
-    while len(DEFINITION_CACHE) > MAX_DEFINITION_CACHE_SIZE:
-        DEFINITION_CACHE.popitem(last=False)
+    with _definition_cache_lock:
+        DEFINITION_CACHE[cache_key] = definitions
+        while len(DEFINITION_CACHE) > MAX_DEFINITION_CACHE_SIZE:
+            DEFINITION_CACHE.popitem(last=False)
     return definitions
 
 
