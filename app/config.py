@@ -28,5 +28,5 @@ logger = logging.getLogger(__name__)
 
 def is_admin(user_id: int) -> bool:
     if not ADMIN_IDS:
-        return True
+        return False
     return user_id in ADMIN_IDS
