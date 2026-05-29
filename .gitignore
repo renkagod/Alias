@@ -1,10 +1,25 @@
+# Python
 __pycache__/
-*.pyc
-.env
-venv/
+*.py[cod]
+*.egg-info/
 .venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Environment
+.env
+.env.local
 
 # Runtime data (see docker-compose: ./data -> user_data.json)
 data/*
 !data/.gitkeep
 user_data.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

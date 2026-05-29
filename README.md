@@ -1,6 +1,7 @@
 # Alias Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/renkagod/Alias/actions/workflows/ci.yml/badge.svg)](https://github.com/renkagod/Alias/actions/workflows/ci.yml)
 
 Telegram-бот для игры в «Alias»: случайные слова из `.txt`‑словарей, ссылки на Викисловарь, RU/EN интерфейс, загрузка словарей и добавление слов (для админов).
 
@@ -78,4 +79,4 @@ python main.py
 
 ## Лицензия
 
-Код распространяется под [MIT License](LICENSE).
+[MIT](LICENSE) — Copyright (c) 2026 [renkagod](https://github.com/renkagod).
