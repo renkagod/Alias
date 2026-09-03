@@ -1,15 +1,15 @@
 import asyncio
 import html as html_lib
 import json
+import random
 import re
 import unicodedata
 from collections import OrderedDict
-import urllib.error
-import urllib.request
-from urllib.parse import quote_plus
+from urllib.parse import quote
 
-from telegram import Update
-from telegram.error import BadRequest
+import httpx
+from telegram import Update, LinkPreviewOptions
+from telegram.error import BadRequest, TelegramError
 from telegram.ext import ContextTypes
 
 from ..data_manager import user_language, user_selected_dict, get_words_from_dict
@@ -23,6 +23,26 @@ MAX_DEFINITION_LENGTH = 220
 MAX_DEFINITION_CACHE_SIZE = 500
 DEFINITION_CACHE: OrderedDict[tuple[str, str], list[str]] = OrderedDict()
 _definition_cache_lock = asyncio.Lock()
+
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            timeout=DEFINITION_TIMEOUT,
+            headers={"User-Agent": WIKTIONARY_USER_AGENT},
+            follow_redirects=True,
+        )
+    return _http_client
+
+
+async def close_http_client():
+    global _http_client
+    if _http_client and not _http_client.is_closed:
+        await _http_client.aclose()
+        _http_client = None
 
 
 def _normalize_ws(text: str) -> str:
@@ -60,24 +80,16 @@ def _strip_headword_prefix(definition: str, word: str) -> str:
     return stripped if stripped else definition
 
 
-def _http_get_json_sync(url: str) -> tuple[int | None, dict | None]:
-    request = urllib.request.Request(url, headers={"User-Agent": WIKTIONARY_USER_AGENT})
+async def _http_get_json(url: str) -> tuple[int | None, dict | None]:
+    client = _get_http_client()
     try:
-        with urllib.request.urlopen(request, timeout=DEFINITION_TIMEOUT) as response:
-            status = getattr(response, "status", 200)
-            if status != 200:
-                return status, None
-            payload = response.read().decode("utf-8", errors="replace")
-            return status, json.loads(payload)
-    except urllib.error.HTTPError as exc:
-        return exc.code, None
+        response = await client.get(url)
+        if response.status_code != 200:
+            return response.status_code, None
+        return response.status_code, response.json()
     except Exception as exc:
         logger.debug(f"Definition request failed for url={url}: {exc}")
         return None, None
-
-
-async def _http_get_json(url: str) -> tuple[int | None, dict | None]:
-    return await asyncio.to_thread(_http_get_json_sync, url)
 
 
 def _extract_ru_definitions(extract_html: str, word: str) -> list[str]:
@@ -96,7 +108,8 @@ def _extract_ru_definitions(extract_html: str, word: str) -> list[str]:
 
     definitions: list[str] = []
     for raw_item in re.findall(r"<li[^>]*>(.*?)</li>", list_match.group(1), flags=re.DOTALL):
-        text = re.sub(r"<[^>]+>", "", raw_item)
+        clean_item = re.sub(r"<(style|script)[^>]*>.*?</\1>", "", raw_item, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<[^>]+>", "", clean_item)
         text = html_lib.unescape(text)
         text = text.split("◆", 1)[0]
         text = _normalize_ws(text)
@@ -136,7 +149,8 @@ def _extract_en_definitions(definition_data: dict, word: str) -> list[str]:
             if not raw_definition:
                 continue
 
-            text = re.sub(r"<[^>]+>", "", raw_definition)
+            clean_definition = re.sub(r"<(style|script)[^>]*>.*?</\1>", "", raw_definition, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r"<[^>]+>", "", clean_definition)
             text = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]+)\]\]", r"\1", text)
             text = html_lib.unescape(text)
             text = _normalize_ws(text)
@@ -179,7 +193,7 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
         for candidate in candidates:
             url = (
                 "https://ru.wiktionary.org/w/api.php"
-                f"?action=query&prop=extracts&titles={quote_plus(candidate)}&format=json"
+                f"?action=query&prop=extracts&titles={quote(candidate.replace(' ', '_'))}&format=json"
             )
             status, payload = await _http_get_json(url)
             if status != 200 or not payload:
@@ -192,7 +206,7 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
                 break
     else:
         for candidate in candidates:
-            url = f"https://en.wiktionary.org/api/rest_v1/page/definition/{quote_plus(candidate)}"
+            url = f"https://en.wiktionary.org/api/rest_v1/page/definition/{quote(candidate.replace(' ', '_'))}"
             status, payload = await _http_get_json(url)
             if status != 200 or not payload:
                 continue
@@ -212,39 +226,31 @@ async def fetch_definitions(word: str, lang: str) -> list[str]:
 
 
 def _build_word_message(word: str, lang: str, definitions: list[str] | None = None) -> str:
-    dictionary_link = f"https://{lang}.wiktionary.org/wiki/{quote_plus(word)}"
+    dictionary_link = f"https://{lang}.wiktionary.org/wiki/{quote(word.replace(' ', '_'))}"
     safe_word = html_lib.escape(word)
     message_text = f"{get_text('random_word_title', lang)} <a href='{dictionary_link}'><b>{safe_word}</b></a>"
 
     if definitions:
         title = html_lib.escape(get_text("definition_title", lang))
-        # 1. Title is OUTSIDE the spoiler
         message_text += f"\n\n📖 <b>{title}:</b>\n<tg-spoiler>"
         
-        # 2. Each definition on a new line with double newline for better spacing
         spoiler_content = ""
         for index, item in enumerate(definitions):
-            # 3. Bold Wiktionary labels (e.g., 'разг.', 'физ., техн.', 'сленг', 'ж. р.')
             item_escaped = html_lib.escape(item)
-            
-            # Regex to match Wiktionary labels at the start:
-            # - Words ending with a dot (incl. hyphens): 'разг.', 'с.-х.'
-            # - Short specific words without dots: 'сленг', 'табу', 'кино'
-            # - Multi-part labels: 'вводн. сл.'
-            # It matches sequences of these separated by spaces or commas.
-            label_regex = r'^((?:(?:[а-яё0-9-+]+\.|\bсленг\b|\bтабу\b|\bкино\b)\s*,?\s*)+)'
-            item_bolded = re.sub(label_regex, r'<b>\1</b>', item_escaped)
+            label_regex = r'^((?:(?:[а-яё0-9-+]+\.|\bсленг\b|\bтабу\b|\bкино\b)\s*,?\s*)+)(\s*)'
+            item_bolded = re.sub(label_regex, r'<b>\1</b>\2', item_escaped)
             
             prefix = f"{index + 1}. " if len(definitions) > 1 else "• "
             spoiler_content += f"{prefix}{item_bolded}\n\n"
 
-        
         message_text += f"{spoiler_content.strip()}</tg-spoiler>"
 
     return message_text
 
 
 def _log_background_task(task: asyncio.Task) -> None:
+    if task.cancelled():
+        return
     try:
         task.result()
     except Exception as exc:
@@ -258,10 +264,17 @@ async def _append_definition_spoiler(message, word: str, lang: str) -> None:
 
     updated_text = _build_word_message(word, lang, definitions)
     try:
-        await message.edit_text(updated_text, parse_mode="HTML", disable_web_page_preview=True)
+        await message.edit_text(
+            updated_text, 
+            parse_mode="HTML", 
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
+        )
     except BadRequest as exc:
         if "message is not modified" not in str(exc).lower():
-            logger.error(f"Failed to edit message with definition: {exc}")
+            logger.warning(f"Failed to edit message with definition: {exc}")
+    except TelegramError as exc:
+        logger.debug(f"Telegram error while editing definition: {exc}")
+
 
 async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from .settings import handle_change_dict
@@ -273,17 +286,25 @@ async def handle_random_word(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await handle_change_dict(update, context)
         return
 
-    word = await get_words_from_dict(active_dict, 1)
-    if word:
-        word_text = word[0]
-        base_message = _build_word_message(word_text, lang)
-        sent_message = await update.message.reply_text(
-            base_message,
-            parse_mode="HTML",
-            disable_web_page_preview=True,
-        )
-
-        definition_task = asyncio.create_task(_append_definition_spoiler(sent_message, word_text, lang))
-        definition_task.add_done_callback(_log_background_task)
-    else:
+    words = await get_words_from_dict(active_dict)
+    if not words:
         await update.message.reply_text(get_text('no_words_in_dict', lang))
+        return
+
+    last_word = context.user_data.get('last_word')
+    if len(words) > 1 and last_word in words:
+        candidates = [w for w in random.sample(words, min(5, len(words))) if w != last_word]
+        word_text = candidates[0] if candidates else random.choice(words)
+    else:
+        word_text = random.choice(words)
+
+    context.user_data['last_word'] = word_text
+    base_message = _build_word_message(word_text, lang)
+    sent_message = await update.message.reply_text(
+        base_message,
+        parse_mode="HTML",
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+    )
+
+    definition_task = asyncio.create_task(_append_definition_spoiler(sent_message, word_text, lang))
+    definition_task.add_done_callback(_log_background_task)

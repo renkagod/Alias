@@ -19,6 +19,7 @@ Looks like you're new here. Please choose your language:""",
         'btn_change_dict': "📚 Change Dictionary",
         'btn_change_lang': "🌐 Change Language",
         'btn_back_to_game': "⬅️ Back to Game",
+        'btn_back': "⬅️ Back",
         'btn_close': "❌ Close",
         'definition_title': "Definition",
         'choose_lang_prompt': "Please choose your language:",
@@ -33,6 +34,7 @@ Looks like you're new here. Please choose your language:""",
         'admin_only': "⛔ This command is only for administrators.",
         'action_canceled': "Action canceled.",
         'invalid_file_type': "Please send a `.txt` file.",
+        'no_dicts_available': "No dictionaries found. Please upload a dictionary first.",
     },
     'ru': {
 
@@ -52,6 +54,7 @@ Looks like you're new here. Please choose your language:""",
         'btn_change_dict': "📚 Сменить словарь",
         'btn_change_lang': "🌐 Сменить язык",
         'btn_back_to_game': "⬅️ Назад в игру",
+        'btn_back': "⬅️ Назад",
         'btn_close': "❌ Закрыть",
         'definition_title': "Определение",
         'choose_lang_prompt': "Пожалуйста, выберите язык:",
@@ -66,9 +69,11 @@ Looks like you're new here. Please choose your language:""",
         'admin_only': "⛔ Эта команда доступна только администраторам.",
         'action_canceled': "Действие отменено.",
         'invalid_file_type': "Пожалуйста, отправьте файл формата `.txt`.",
+        'no_dicts_available': "Словари не найдены. Сначала загрузите словарь.",
     }
 }
 
 
 def get_text(key: str, lang: str, default_lang: str = 'ru'):
-    return TEXTS.get(lang, TEXTS.get(default_lang, TEXTS['en'])).get(key, f"<{key}>")
+    lang_dict = TEXTS.get(lang) or TEXTS.get(default_lang) or TEXTS['ru']
+    return lang_dict.get(key, f"<{key}>")

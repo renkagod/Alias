@@ -12,15 +12,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"User {user.id} ({user.first_name}) started the bot.")
     
     if user.id not in user_language:
+        welcome_template = get_text('welcome_new', DEFAULT_LANG)
         await update.message.reply_html(
-            TEXTS[DEFAULT_LANG]['welcome_new'].format(user=user.mention_html()),
+            welcome_template.format(user=user.mention_html()),
             reply_markup=get_lang_inline_keyboard()
         )
         return
 
     lang = user_language.get(user.id, DEFAULT_LANG)
     if user.id not in user_selected_dict:
-        await handle_change_dict(update, context)
+        await handle_change_dict(update, context, is_initial=True)
     else:
         await show_main_menu_and_welcome(update, context)
 
@@ -36,6 +37,7 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
     from telegram.ext import ConversationHandler
     user_id = update.effective_user.id
     lang = user_language.get(user_id, DEFAULT_LANG)
+    context.user_data.pop('words_to_add', None)
     await update.message.reply_text(get_text('action_canceled', lang), reply_markup=get_main_reply_keyboard(lang))
     return ConversationHandler.END
 

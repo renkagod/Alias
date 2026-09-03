@@ -6,3 +6,7 @@ user_data.json
 docker-compose.yml
 Dockerfile
 .env.example
+.venv
+venv
+data
+.pytest_cache

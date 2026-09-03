@@ -5,15 +5,21 @@ from telegram.ext import (Application, CommandHandler, CallbackQueryHandler,
 from app.config import BOT_TOKEN, logger
 from app.texts import TEXTS
 from app.handlers.common import start, error_handler, cancel_conversation, show_main_menu_and_welcome
-from app.handlers.game import handle_random_word
+from app.handlers.game import handle_random_word, close_http_client
 from app.handlers.settings import (show_settings_menu, handle_change_dict, 
                                  handle_change_lang, button_callback_handler)
 from app.handlers.admin import (addword_start, addword_receive_words, 
                               dict_upload_start, dict_upload_handler,
-                              AWAITING_WORDS, AWAITING_DICT_CHOICE)
+                              AWAITING_WORDS, AWAITING_DICT_CHOICE, AWAITING_DICT_FILE)
+
+async def on_shutdown(app: Application):
+    await close_http_client()
 
 def main():
-    application = Application.builder().token(BOT_TOKEN).build()
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN not found in .env file or environment!")
+
+    application = Application.builder().token(BOT_TOKEN).post_shutdown(on_shutdown).build()
 
     # Filters for Reply Keyboard buttons
     RANDOM_WORD_FILTER = filters.Text([TEXTS['en']['btn_random_word'], TEXTS['ru']['btn_random_word']])
@@ -26,7 +32,6 @@ def main():
     application.add_handler(MessageHandler(SETTINGS_FILTER, show_settings_menu))
     application.add_handler(MessageHandler(BACK_TO_GAME_FILTER, show_main_menu_and_welcome))
 
-    
     # Admin & Word addition handlers
     addword_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("addword", addword_start)],
@@ -36,10 +41,16 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel_conversation)],
     )
-
     application.add_handler(addword_conv_handler)
-    application.add_handler(CommandHandler("dict_upload", dict_upload_start))
-    application.add_handler(MessageHandler(filters.Document.TXT, dict_upload_handler))
+
+    dict_upload_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("dict_upload", dict_upload_start)],
+        states={
+            AWAITING_DICT_FILE: [MessageHandler(filters.Document.ALL, dict_upload_handler)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel_conversation)],
+    )
+    application.add_handler(dict_upload_conv_handler)
     
     # Callback Query handler for inline buttons
     application.add_handler(CallbackQueryHandler(button_callback_handler))
