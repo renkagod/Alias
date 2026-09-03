@@ -24,6 +24,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
     level=getattr(logging, LOG_LEVEL, logging.INFO)
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def is_admin(user_id: int) -> bool:
