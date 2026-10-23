@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/renkagod/Alias/actions/workflows/ci.yml/badge.svg)](https://github.com/renkagod/Alias/actions/workflows/ci.yml)
+[![Donate](https://img.shields.io/badge/Donate-crypto-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/renkagod/.github/blob/main/DONATE.md)
 
 Telegram-бот для игры в «Alias»: случайные слова из `.txt`-словарей, ссылки на определения в Викисловаре, RU/EN интерфейс, загрузка словарей и добавление слов для администраторов.
 
@@ -86,6 +87,10 @@ python main.py
 ```
 
 Требуется Python 3.11+.
+
+## Поддержать проект
+
+Если проект оказался полезен, можно поддержать его криптой: [адреса для доната](https://github.com/renkagod/.github/blob/main/DONATE.md).
 
 ## Лицензия
 
